@@ -1,4 +1,7 @@
 # ProjectMarcel
+[![Build status](https://travis-ci.org/microwav3s/ProjectMarcel.svg?master)](https://travis-ci.org/microwav3s)
+
+
 
 ## What is it?
 A dumping place for Information Retrieval programming assignment solutions.
