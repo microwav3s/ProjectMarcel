@@ -1,5 +1,2 @@
 language: java
 sudo: false
-
-script:
-  - gradle check
