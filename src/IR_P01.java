@@ -6,6 +6,11 @@ import org.apache.lucene.store.RAMDirectory;
 public class IR_P01 {
 
 	public static void main(String[] args) {
-		System.out.println("IR_P01 launched.");
+	    /*
+	    * Welcome Screen
+	     */
+		System.out.println("IR_P01 running.");
+		System.out.println("")
+
 	}
 }
