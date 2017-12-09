@@ -250,6 +250,7 @@ paket-files/
 # JetBrains Rider
 .idea/
 *.sln.iml
+*.iml
 
 *.vcxproj
 *.vcxproj.filters
@@ -264,4 +265,10 @@ vgcore.*
 
 # build
 build/
-a.out
+.gradle
+gradlew
+gradlew.bat
+projectmarcel.properties
+settings.gradle
+projectmarcel.xml
+gradle/*
