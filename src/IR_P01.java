@@ -25,7 +25,13 @@ public class IR_P01 {
 
 	private static Analyzer analyzer;
 
-	private static String getRanked(String query, ScoreDoc[] results, IndexSearcher indexSearcher) throws Throwable {
+    /**
+     * Calculates rankings for the documents and given query according to the selected ranking model.
+     * @param query
+     * @param results
+     * @param indexSearcher
+     */
+	private static String getRanked(String query, ScoreDoc[] results, IndexSearcher indexSearcher) throws Exception {
 		String output = "";
 		int rank = 1;
 
@@ -46,7 +52,11 @@ public class IR_P01 {
 		return output;
 	}
 
-	private static Document getDocument(String path) throws Throwable {
+    /**
+     * Prepares a given document.
+     * @param path
+     */
+	private static Document getDocument(String path) throws Exception {
 
 		File input = new File(path);
 		org.jsoup.nodes.Document doc = Jsoup.parse(input, "UTF-8", "");
@@ -76,19 +86,11 @@ public class IR_P01 {
 		return result;
 	}
 
-
-	private List<String> stemText(String text) {
-		// TODO
-
-		return null;
-	}
-
-	public static void main(String[] args) throws Throwable {
+	public static void main(String[] args) throws Exception {
 		String doc_location = "";
 		String index_location = "";
 		String query = "";
 		boolean use_vs = false;
-
 		Path path;
 		Directory directory;
 		DirectoryReader directoryReader;
@@ -123,10 +125,9 @@ public class IR_P01 {
 		System.out.print((use_vs ? "Vector Space Model ranking algorithm" : "Okapi BM25") + " with query " + query + "\n");
 
 		/**
-		 * Stemming
+		 * Initialize Analyzer
 		 */
 		analyzer = new EnglishAnalyzer();
-		// TODO
 
 		/**
 		 * Initialize index if none is found
@@ -167,7 +168,13 @@ public class IR_P01 {
 		System.out.println(getRanked(query, result, indexSearcher));
 	}
 
-	public static ScoreDoc[] createSearchIndex(String query, int numberOfResults, IndexSearcher indexSearcher) throws Throwable {
+    /**
+     * Creates a new search index if none is available and configures searchfields as well as weights.
+     * @param query
+     * @param numberOfResults
+     * @param indexSearcher
+     */
+	public static ScoreDoc[] createSearchIndex(String query, int numberOfResults, IndexSearcher indexSearcher) throws Exception {
 
 		/**
 		 * Set weights for our tags
@@ -194,6 +201,11 @@ public class IR_P01 {
 		return indexSearcher.search(parsedQuery, numberOfResults).scoreDocs;
 	}
 
+	/**
+	 * Adds all files in a directory to a given list. Supports sub-directories.
+	 * @param directoryName
+	 * @param files
+	 */
 	private static void addFileToList(String directoryName, ArrayList<File> files) {
 		File directory = new File(directoryName);
 
@@ -213,11 +225,15 @@ public class IR_P01 {
 		}
 	}
 
-	private static List<String> tokenizeString(String string) throws Throwable {
+    /**
+     * Runs a stream of tokens to stem the document texts.
+     * @param string
+     * @return
+     */
+	private static List<String> tokenizeString(String string) throws Exception {
 		// Use given analyzer to tokenize, stopword eliminate and stem given String
 		List<String> result = new ArrayList<String>();
 		TokenStream stream = analyzer.tokenStream(null, new StringReader(string));
-
 		stream.reset();
 
 		// Add results to our list as long as there are new entries
