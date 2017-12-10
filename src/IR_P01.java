@@ -6,28 +6,28 @@ import java.util.List;
 
 public class IR_P01 {
 
-    private String getRanked() {
-        /** TODO
-         * Print  a  ranked  list  of  relevant  articles  given  a  search  query.   The  output  should
-         * contain 10 most relevant documents with their rank, title and summary, relevance
-         * score and path.
-         */
-        return null;
-    }
+	private String getRanked() {
+		/** TODO
+		 * Print  a  ranked  list  of  relevant  articles  given  a  search  query.   The  output  should
+		 * contain 10 most relevant documents with their rank, title and summary, relevance
+		 * score and path.
+		 */
+		return null;
+	}
 
-    private Document getDocument(String path) {
-        File doc = new File(path);
-        /** TODO
-         * Consider the English language and use a stemmer for it (e.g. Porter Stemmer)
-         */
-        return null;
-    }
+	private Document getDocument(String path) {
+		File doc = new File(path);
+		/** TODO
+		 * Consider the English language and use a stemmer for it (e.g. Porter Stemmer)
+		 */
+		return null;
+	}
 
-    private List<String> stemText(String text) {
-        // TODO
+	private List<String> stemText(String text) {
+		// TODO
 
-        return null;
-    }
+		return null;
+	}
 
 	public static void main(String[] args) {
 		String doc_location = "";
@@ -55,8 +55,8 @@ public class IR_P01 {
 		}
 
 		/**
-	     * Welcome Screen
-	     */
+		 * Welcome Screen
+		 */
 		System.out.println("IR_P01 running.\n");
 		System.out.println("Taking document data from " + doc_location);
 		System.out.println("Using index directory " + index_location);
@@ -66,8 +66,8 @@ public class IR_P01 {
 		/**
 		 * Stemming
 		 */
-        EnglishAnalyzer analyzer = new EnglishAnalyzer();
-        // TODO
+		EnglishAnalyzer analyzer = new EnglishAnalyzer();
+		// TODO
 
 	}
 }
