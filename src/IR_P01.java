@@ -11,6 +11,7 @@ import java.util.Map;
 import org.jsoup.*;
 import org.jsoup.select.Elements;
 import org.apache.lucene.analysis.*;
+import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.*;
@@ -26,91 +27,50 @@ public class IR_P01 {
 	/*
 	 * Fields
 	 */
-	private Directory directory;
-	private DirectoryReader directoryReader;
-	private Analyzer analyzer;
+	private static Directory directory;
+	private static DirectoryReader directoryReader;
+	private static Analyzer analyzer;
 
-	private IndexSearcher indexSearcher;
-	private String[] searchFields = { "title", "body", "date" };
-	private Map<String, Float> weights;
-	private Float titleWeight = 0.5f;
-	private Float bodyWeight = 2.0f;
-	private Float dateWeight = 0.5f;
-
-	private String rankingMode = "OK";
-
-	public static void main(String[] args) {
-		/*
-		 * Welcome Screen
-		 */
-		System.out.println("IR_P01 running.");
-		System.out.println("");
-
-	}
-
-	public IR_P01(String pathToDocuments) throws Throwable {
-		Path path = Paths.get(pathToDocuments);
-		directory = FSDirectory.open(path);
-
-		if (!DirectoryReader.indexExists(directory)) {
-			// Open IndexWriter with standard config
-			IndexWriterConfig writerConfig = new IndexWriterConfig(analyzer);
-
-			// Set similarities based on Command Line
-			if (rankingMode == "OK") {
-				BM25Similarity similarity = new BM25Similarity();
-				writerConfig.setSimilarity(similarity);
-			} else {
-				// VM is default?
-			}
-
-			IndexWriter indWriter = new IndexWriter(directory, writerConfig);
-
-			// Create Document list to feed into our index writer
-			ArrayList<File> documents = new ArrayList<File>();
-			addFileToList(pathToDocuments, documents);
-
-			System.out.println("Indexing files...");
-			for (File file : documents) {
-				indWriter.addDocument(getDocumentFromPath(file.getAbsolutePath()));
-			}
-
-			indWriter.close();
+	private static IndexSearcher indexSearcher;
+	private static ScoreDoc[] resultDocuments;
+	private static String[] searchFields = { "title", "body", "date" };
+	private static String query;
+	private static Map<String, Float> weights;
+	private static Float titleWeight = 0.5f;
+	private static Float bodyWeight = 2.0f;
+	private static Float dateWeight = 0.5f;
+	
+    private static String getRanked() throws Throwable {
+        /** TODO
+         * Print  a  ranked  list  of  relevant  articles  given  a  search  query.   The  output  should
+         * contain 10 most relevant documents with their rank, title and summary, relevance
+         * score and path.
+         */
+    	String output = "";
+		int rank = 1;
+		
+		output += "Search results for \"" + query + "\"\n";
+		// For all search results, add their String representation to the output
+		for (ScoreDoc scoredDocument : resultDocuments) {
+			Document currentDocument = getDocument(scoredDocument.doc);
+			
+			String docHead = rank + ":\t" + currentDocument.getField("title").stringValue();
+			String docPath = "Path:" + currentDocument.getField("path").stringValue();
+			String docSummary = "Summary: " + currentDocument.getField("summary").stringValue();
+			
+			output += docHead + "\n" + docPath + "\n" + docSummary + "\n";
+			rank++;
 		}
+		
+		return output;
+    }
 
-		directoryReader = DirectoryReader.open(directory);
-		indexSearcher = new IndexSearcher(directoryReader);
-
-		// Set standard weights
-		weights = new HashMap<String, Float>();
-		weights.put("title", titleWeight);
-		weights.put("body", bodyWeight);
-		weights.put("date", dateWeight);
-
-	}
-
-	private static void addFileToList(String directoryName, ArrayList<File> files) {
-		File directory = new File(directoryName);
-
-		// List all files and folders in directory
-		File[] fileList = directory.listFiles();
-
-		// Reursively add all Html files to our fileList and print it out
-		for (File file : fileList) {
-			if (file.isFile() && file.getName().endsWith(".html")) {
-				
-				System.out.println("Get " + file.getName());
-				files.add(file);
-				
-			} else if (file.isDirectory()) {
-				addFileToList(file.getAbsolutePath(), files);
-			}
-		}
-	}
-
-	private Document getDocumentFromPath(String path) throws Throwable {
-		// Read and get raw text from .html file
-		File input = new File(path);
+    private static Document getDocument(String path) throws Throwable {
+        /** TODO
+         * Consider the English language and use a stemmer for it (e.g. Porter Stemmer)
+         */
+        
+        File input = new File(path);
 		org.jsoup.nodes.Document doc = Jsoup.parse(input, "UTF-8", "");
 
 		// Create body, title and date tags
@@ -126,7 +86,7 @@ public class IR_P01 {
 		}
 
 		// Tokenize, stopword eliminate and stem document body
-		String processedBody = this.tokenizeString(body.text()).toString();
+		String processedBody = tokenizeString(body.text()).toString();
 
 		// Create Lucene Document and add required Fields, only store title and date in index
 		Document lucDoc = new Document();
@@ -139,13 +99,135 @@ public class IR_P01 {
 		lucDoc.add(new TextField("path", path, Field.Store.YES));
 
 		return lucDoc;
-	}
-	
-	private Document getDocumentById(int Id) throws Throwable {
+    }
+    
+    private Document getDocument(int Id) throws Throwable {
 		IndexReader indReader = indexSearcher.getIndexReader();
 		return indReader.document(Id);
 	}
 
+    private List<String> stemText(String text) {
+        // TODO
+
+        return null;
+    }
+
+	public static void main(String[] args) throws Throwable {
+		String doc_location = "";
+		String index_location = "";
+		boolean use_vs = false;
+		
+		/**
+		 * Argument collection
+		 */
+		try {
+			doc_location = args[0];
+			if(args[1].toLowerCase().equals("vs") || args[1].toLowerCase().equals("ok")) {
+				use_vs = (args[1].toLowerCase().equals("vs"));
+				query = args[2];
+			} else {
+				index_location = args[1];
+				use_vs = (args[2].toLowerCase().equals("vs"));
+				query = args[3];
+			}
+		}
+		catch(ArrayIndexOutOfBoundsException exception) {
+			System.err.print("Necessary arguments not detected.\n Please run the program again with the following syntax: " +
+					"java -jar IR_P01.jar [path_to_document_folder] [path_to_index_folder] [VS/OK] [query]\n");
+		}
+
+		/**
+	     * Welcome Screen
+	     */
+		System.out.println("IR_P01 running.\n");
+		System.out.println("Taking document data from " + doc_location);
+		System.out.println("Using index directory " + index_location);
+		System.out.print("Running ");
+		System.out.print((use_vs ? "Vector Space Model ranking algorithm" : "Okapi BM25") + " with query" + query + "\n");
+
+		/**
+		 * Stemming
+		 */
+        analyzer = new EnglishAnalyzer();
+        // TODO
+        
+        /**
+         * Initialize index if no index is found
+         */
+        
+        Path path = Paths.get(index_location);
+		directory = FSDirectory.open(path);
+		
+        if (!DirectoryReader.indexExists(directory)) {
+			
+			IndexWriterConfig writerConfig = new IndexWriterConfig(analyzer);
+
+			if (!use_vs) {
+				BM25Similarity similarity = new BM25Similarity();
+				writerConfig.setSimilarity(similarity);
+			} else {
+				// VM is default?
+			}
+
+			IndexWriter indWriter = new IndexWriter(directory, writerConfig);
+
+			// Create Document list to feed into our index writer
+			ArrayList<File> documents = new ArrayList<File>();
+			addFileToList(doc_location, documents);
+
+			System.out.println("Indexing files...");
+			for (File file : documents) {
+				indWriter.addDocument(getDocument(file.getAbsolutePath()));
+			}
+
+			indWriter.close();
+		}
+
+		directoryReader = DirectoryReader.open(directory);
+		indexSearcher = new IndexSearcher(directoryReader);
+
+		// Set standard weights
+		weights = new HashMap<String, Float>();
+		weights.put("title", titleWeight);
+		weights.put("body", bodyWeight);
+		weights.put("date", dateWeight);
+
+		
+		resultDocuments = createSearchIndex(query, 10);
+		
+		System.out.println(getRanked());
+	}
+	
+	public static ScoreDoc[] createSearchIndex(String query, int numberOfResults) throws Throwable {
+
+		// Create new MultiFieldQueryParser with chosen search fields and weights
+		MultiFieldQueryParser parser = new MultiFieldQueryParser(searchFields, analyzer, weights);
+
+		// Parse user query
+		Query parsedQuery = parser.parse(query);
+
+		return indexSearcher.search(parsedQuery, numberOfResults).scoreDocs;
+	}
+	
+	private static void addFileToList(String directoryName, ArrayList<File> files) {
+		File directory = new File(directoryName);
+
+		// List all files and folders in directory
+		File[] fileList = directory.listFiles();
+
+		// Recursively add all Html files to our fileList and print it out
+		for (File file : fileList) {
+			if (file.isFile() && file.getName().endsWith(".html")) {
+				
+				System.out.println("Get " + file.getName());
+				files.add(file);
+				
+			} else if (file.isDirectory()) {
+				addFileToList(file.getAbsolutePath(), files);
+			}
+		}
+	}
+	
 	private List<String> tokenizeString(String string) throws Throwable {
 		// Use given analyzer to tokenize, stopword eliminate and stem given String
 		List<String> result = new ArrayList<String>();
@@ -163,37 +245,5 @@ public class IR_P01 {
 		stream.close();
 		return result;
 	}
-
-	public ScoreDoc[] createSearchIndex(String query, int numberOfResults) throws Throwable {
-
-		// Create new MultiFieldQueryParser with chosen search fields and weights
-		MultiFieldQueryParser parser = new MultiFieldQueryParser(searchFields, analyzer, weights);
-
-		// Parse user query
-		Query parsedQuery = parser.parse(query);
-
-		return indexSearcher.search(parsedQuery, numberOfResults).scoreDocs;
-	}
-
-	private void printResults(String query, ScoreDoc[] resultDocuments) throws Throwable {
-		
-		// Create Output string
-		String output = "";
-		int rank = 1;
-		
-		output += "Search results for \"" + query + "\"\n";
-		// For all search results, add their String representation to the output
-		for (ScoreDoc scoredDocument : resultDocuments) {
-			Document currentDocument = getDocumentById(scoredDocument.doc);
-			
-			String docHead = rank + ":\t" + currentDocument.getField("title").stringValue();
-			String docPath = "Path:" + currentDocument.getField("path").stringValue();
-			String docSummary = "Summary: " + currentDocument.getField("summary").stringValue();
-			
-			output += docHead + "\n" + docPath + "\n" + docSummary + "\n";
-			rank++;
-		}
-		
-		System.out.println(output);
-	}
+	
 }
