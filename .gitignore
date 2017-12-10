@@ -272,3 +272,4 @@ projectmarcel.properties
 settings.gradle
 projectmarcel.xml
 gradle/*
+src/META-INF/MANIFEST.MF
