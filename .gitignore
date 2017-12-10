@@ -272,3 +272,5 @@ projectmarcel.properties
 settings.gradle
 projectmarcel.xml
 gradle/*
+src/META-INF/MANIFEST.MF
+out/production/ProjectMarcel/IR_P01.class
