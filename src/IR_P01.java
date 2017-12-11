@@ -1,29 +1,29 @@
-import java.io.File;
 import java.io.StringReader;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.io.File;
+import java.util.ArrayList;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-import org.jsoup.*;
-import org.jsoup.select.Elements;
-import org.apache.lucene.analysis.*;
-import org.apache.lucene.analysis.en.EnglishAnalyzer;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.*;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.*;
 import org.apache.lucene.store.*;
+import org.apache.lucene.analysis.en.EnglishAnalyzer;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.TokenStream;
+
+import org.jsoup.Jsoup;
 
 public class IR_P01 {
-
-	private static Analyzer analyzer;
+	/**
+	 * Variables
+	 */
+	private static EnglishAnalyzer analyzer;
 
     /**
      * Calculates rankings for the documents and given query according to the selected ranking model.
@@ -31,21 +31,21 @@ public class IR_P01 {
      * @param results
      * @param indexSearcher
      */
-	private static String getRanked(String query, ScoreDoc[] results, IndexSearcher indexSearcher) throws Exception {
+	private static String getRankings(String query, ScoreDoc[] results, IndexSearcher indexSearcher) throws Exception {
+        int rank = 1;
 		String output = "";
-		int rank = 1;
 
-		output += "Search results for \"" + query + "\"\n";
-		// For all search results, add their String representation to the output
-		for (ScoreDoc scoredDocument : results) {
+		output += "\nQuery Search Results:\n\n";
 
-			Document currentDocument = indexSearcher.getIndexReader().document(scoredDocument.doc);
+		for (ScoreDoc scoredDoc : results) {
+			Document currentDoc = indexSearcher.getIndexReader().document(scoredDoc.doc);
 
-			String docHead = rank + ":\t" + currentDocument.getField("title").stringValue();
-			String docPath = "Path:" + currentDocument.getField("path").stringValue();
-			//String docSummary = "Summary: " + currentDocument.getField("summary").stringValue();
+			String title = "Title: " + currentDoc.getField("title").stringValue() + "\n";
+			String summary = "Summary: " + currentDoc.getField("summary").stringValue() + "\n";
+			String relScore = "Relevance Score: " + scoredDoc.score + "\n";
+            String path = "Path: " + currentDoc.getField("path").stringValue() + "\n";
 
-			output += docHead + "\n" + docPath + "\n" /*+ docSummary*/ + "\n";
+			output += rank + ".\n" + title + summary + relScore + path + "\n";
 			rank++;
 		}
 
@@ -57,30 +57,17 @@ public class IR_P01 {
      * @param path
      */
 	private static Document getDocument(String path) throws Exception {
-
-		File input = new File(path);
-		org.jsoup.nodes.Document doc = Jsoup.parse(input, "UTF-8", "");
-
-		// Create body, title and date tags
-		Elements body = doc.getElementsByTag("body");
-		String date = "";
-
-		// Search for document date
-		for (org.jsoup.nodes.Element meta : doc.select("meta")) {
-			if (meta.attr("name").equals("date"))
-				date = meta.attr("content");
-		}
-
-		// Tokenize, stopword eliminate and stem document body
-		String processedBody = tokenizeString(body.text()).toString();
-
-		// Create Lucene Document and add required Fields, only store title and date in index
+		File file = new File(path);
+		org.jsoup.nodes.Document doc = Jsoup.parse(file, "UTF-8", "");
 		Document result = new Document();
 
+        //Prepare text body
+        String body = tokenStemming(doc.getElementsByTag("body").text()).toString();
+
+		// Fill new document with crucial fields
 		result.add(new TextField("title", doc.getElementsByTag("title").text(), Field.Store.YES));
-		result.add(new TextField("date", date, Field.Store.YES));
 		result.add(new TextField("summary", doc.getElementsByTag("summary").text(), Field.Store.YES));
-		result.add(new TextField("body", processedBody, Field.Store.NO));
+		result.add(new TextField("body", body, Field.Store.NO));
 		result.add(new TextField("path", path, Field.Store.YES));
 
 		return result;
@@ -119,10 +106,11 @@ public class IR_P01 {
 		 * Welcome Screen
 		 */
 		System.out.println("IR_P01 running.\n");
-		System.out.println("Taking document data from " + doc_location);
-		System.out.println("Using index directory " + index_location);
+		System.out.println("Taking document data from " + doc_location + ".");
+		System.out.println("Using index directory " + index_location + ".");
 		System.out.print("Running ");
-		System.out.print((use_vs ? "Vector Space Model ranking algorithm" : "Okapi BM25") + " with query " + query + "\n");
+		System.out.println((use_vs ? "Vector Space Model ranking model" : "Okapi BM25") + " with query '" + query + "'.\n");
+		System.out.println("Processing...");
 
 		/**
 		 * Initialize Analyzer
@@ -165,7 +153,7 @@ public class IR_P01 {
 
 		ScoreDoc[] result = createSearchIndex(query, 10, indexSearcher);
 
-		System.out.println(getRanked(query, result, indexSearcher));
+		System.out.println(getRankings(query, result, indexSearcher));
 	}
 
     /**
@@ -182,12 +170,11 @@ public class IR_P01 {
 		Map<String, Float> weights = new HashMap<String, Float>();
 		weights.put("title", 0.5f);
 		weights.put("body", 2.0f);
-		weights.put("date", 0.5f);
 
 		/**
 		 * Search for title, body and date
 		 */
-		String[] searchFields = { "title", "body", "date" };
+		String[] searchFields = { "title", "body"};
 		MultiFieldQueryParser parser = new MultiFieldQueryParser(searchFields, analyzer, weights);
 
 		/**
@@ -228,23 +215,23 @@ public class IR_P01 {
     /**
      * Runs a stream of tokens to stem the document texts.
      * @param string
-     * @return
      */
-	private static List<String> tokenizeString(String string) throws Exception {
-		// Use given analyzer to tokenize, stopword eliminate and stem given String
-		List<String> result = new ArrayList<String>();
+	private static List<String> tokenStemming(String string) throws Exception {
+		List<String> output = new ArrayList<>();
+
+		// Feed given text into analyzer token stream.
 		TokenStream stream = analyzer.tokenStream(null, new StringReader(string));
+
 		stream.reset();
 
 		// Add results to our list as long as there are new entries
 		while (stream.incrementToken()) {
-			result.add(stream.getAttribute(CharTermAttribute.class).toString());
+			output.add(stream.getAttribute(CharTermAttribute.class).toString());
 		}
 
-		// Close and clean up opened streams
 		stream.end();
 		stream.close();
-		return result;
+		return output;
 	}
 
 }
