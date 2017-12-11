@@ -274,3 +274,7 @@ projectmarcel.xml
 gradle/*
 src/META-INF/MANIFEST.MF
 out/production/ProjectMarcel/IR_P01.class
+out/production/ProjectMarcel/IR_P01.class
+TeamMarcel_DocPR_01.pdf
+*.class
+out/production/ProjectMarcel/IR_P01.class
