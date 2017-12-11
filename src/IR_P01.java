@@ -43,9 +43,9 @@ public class IR_P01 {
 
 			String docHead = rank + ":\t" + currentDocument.getField("title").stringValue();
 			String docPath = "Path:" + currentDocument.getField("path").stringValue();
-			String docSummary = "Summary: " + currentDocument.getField("summary").stringValue();
+			//String docSummary = "Summary: " + currentDocument.getField("summary").stringValue();
 
-			output += docHead + "\n" + docPath + "\n" + docSummary + "\n";
+			output += docHead + "\n" + docPath + "\n" /*+ docSummary*/ + "\n";
 			rank++;
 		}
 
@@ -169,7 +169,7 @@ public class IR_P01 {
 	}
 
     /**
-     * Creates a new search index if none is available and configures searchfields as well as weights.
+     * Creates a new search index if none is available and configures searchfields as well as weights. Output as scored Document array.
      * @param query
      * @param numberOfResults
      * @param indexSearcher

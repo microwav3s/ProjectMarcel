@@ -5,6 +5,14 @@ File input is mostly handled by the jsoup HTML manipulation library for Java.
 
 According to the task we are using the Lucene english analyzer to tokenize the HTML body texts.
 
+Major library functions and classes in use:
+- IndexWriterConfig, IndexWriter and IndexSearcher : setSimilarity() to switch between ranking models ; 
+- EnglishAnalyzer : 
+- Directory & DirectoryReader
+- Document, TextField, Elements
+- ScoreDoc
+- TokenStream
+
 Our default search index weightings are as follows:
 Title: 0.5
 Body: 2.0
