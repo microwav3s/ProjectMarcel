@@ -25,8 +25,7 @@ public class IR_P02 {
 	 * Variables
 	 */
 	private static EnglishAnalyzer analyzer;
-	private static String index_location = "C:\\Users\\marce\\eclipse-workspace\\IR"; // for testing, accessed via
-																						// command line arguments
+	private static String index_location;
 	private static String outputFileName = "pages.txt";
 
 	/**
@@ -41,17 +40,16 @@ public class IR_P02 {
 		int rank = 1;
 		String output = "";
 
-		output += "\nQuery Search Results:\n\n";
+		output += "\nSearch Results for \"" + query + "\":\n\n";
 
 		for (ScoreDoc scoredDoc : results) {
 			Document currentDoc = indexSearcher.getIndexReader().document(scoredDoc.doc);
 
-			String title = "Title: " + currentDoc.getField("title").stringValue() + "\n";
-			String summary = "Summary: " + currentDoc.getField("summary").stringValue() + "\n";
+			String title = currentDoc.getField("title").stringValue() + "\n";
 			String relScore = "Relevance Score: " + scoredDoc.score + "\n";
 			String path = "Url: " + currentDoc.getField("url").stringValue() + "\n";
 
-			output += rank + ".\n" + title + summary + relScore + path + "\n";
+			output += rank + "." + title + relScore + path + "\n";
 			rank++;
 		}
 
@@ -81,8 +79,9 @@ public class IR_P02 {
 	}
 
 	public static void main(String[] args) throws Exception {
-		String url = "http://lemmyhawkins.de"; // for testing, accessed via command line args
-		String query = "twitch"; // for testing, accessed via command line args
+		String url;
+		String query;
+		int crawlDepth;
 		Path path;
 		Directory directory;
 		DirectoryReader directoryReader;
@@ -91,33 +90,30 @@ public class IR_P02 {
 		/**
 		 * Argument collection
 		 */
-		// try {
-		// doc_location = args[0];
-		// if(args[1].toLowerCase().equals("vs") || args[1].toLowerCase().equals("ok"))
-		// {
-		// use_vs = (args[1].toLowerCase().equals("vs"));
-		// query = args[2];
-		// } else {
-		// index_location = args[1];
-		// use_vs = (args[2].toLowerCase().equals("vs"));
-		// query = args[3];
-		// }
-		// }
-		// catch(ArrayIndexOutOfBoundsException exception) {
-		// System.err.print("Necessary arguments not detected.\n Please run the program
-		// again with the following syntax: " +
-		// "java -jar IR_P01.jar [path_to_document_folder] [path_to_index_folder]
-		// [query]\n");
-		// }
+		try {
+			url = args[0];
+			crawlDepth = Integer.parseInt(args[1]);
+			index_location = args[2];
+			query = args[3];
+
+		} catch (NumberFormatException nexception) {
+			System.err
+					.print("Necessary arguments are invalid.\nPlease run the program again with the following syntax: "
+							+ "java -jar IR_P01.jar [seed url] [crawling depth] [path to lucene index] [query]\n");
+			return;
+		} catch (ArrayIndexOutOfBoundsException exception) {
+			System.err.print(
+					"Necessary arguments not detected.\n Please run the program again with the following syntax: "
+							+ "java -jar IR_P01.jar [seed url] [crawling depth] [path to lucene index] [query]\n");
+			return;
+		}
 
 		/**
 		 * Welcome Screen
 		 */
 		System.out.println("IR_P02 running.\n");
-		System.out.println("Taking document data from " + url + ".");
-		System.out.println("Using index directory " + index_location + ".");
-		System.out.print("Running ");
-		System.out.println("Processing...");
+		System.out.println("Seed URL is " + url);
+		System.out.println("Using index directory " + index_location);
 
 		/**
 		 * Initialize Analyzer
@@ -130,24 +126,30 @@ public class IR_P02 {
 		path = Paths.get(index_location);
 		directory = FSDirectory.open(path);
 
-		// Check for output file and remove it, a new one will be generated
+		/**
+		 * Check for output file and remove it, a new one will be generated
+		 */
 		File linksFile = new File(index_location + File.separator + outputFileName);
 		if (linksFile.exists()) {
 			linksFile.delete();
-
 		}
 
+		/**
+		 * Check for search index. If it doesn't exist, create a new one and crawl from
+		 */
 		if (!DirectoryReader.indexExists(directory)) {
 
 			IndexWriterConfig writerConfig = new IndexWriterConfig(analyzer);
 			IndexWriter indWriter = new IndexWriter(directory, writerConfig);
 
-			// Create Document list to feed into our index writer
+			/**
+			 * Create Document list to feed into our index writer
+			 */
 			ArrayList<String> documents = new ArrayList<String>();
 
-			addDocumentsFromUrl(url, documents, 1, 0);
+			addDocumentsFromUrl(url, documents, crawlDepth, 0);
 
-			System.out.println("adding website documents to index...");
+			System.out.println("Begin crawling...");
 			for (String s : documents) {
 				try {
 					indWriter.addDocument(getDocument(s));
@@ -157,6 +159,7 @@ public class IR_P02 {
 			}
 
 			indWriter.close();
+			System.out.println("Crawling done");
 		}
 
 		directoryReader = DirectoryReader.open(directory);
@@ -202,31 +205,63 @@ public class IR_P02 {
 		return indexSearcher.search(parsedQuery, numberOfResults).scoreDocs;
 	}
 
+	/**
+	 * Adds every link found in <em>Uri<em> into the <em>documents<em> list
+	 * 
+	 * @param Uri
+	 *            URI to search every link in
+	 * @param documents
+	 *            List of found links
+	 * @param depth
+	 *            Maximum crawling level
+	 * @param currentDepth
+	 *            Current crawling level
+	 * @throws Exception
+	 */
 	private static void addDocumentsFromUrl(String Uri, ArrayList<String> documents, int depth, int currentDepth)
 			throws Exception {
 
+		/**
+		 * Stop when maximum depth is reached
+		 */
 		if (currentDepth >= depth) {
 			return;
 		}
 
-		// Parse the links from website
+		/**
+		 * Parse the links from website
+		 */
 		ArrayList<String> links = parseLinksFromDocument(Uri.toLowerCase());
 
 		for (String s : links) {
-			// Normalize and check validity of link
+			/**
+			 * Normalize and check validity of link
+			 */
 			if (!documents.contains(s)) {
 				documents.add(s);
 				writeToOutput(s, currentDepth);
 			}
 
+			/**
+			 * Recursively repeat for every url found
+			 */
 			addDocumentsFromUrl(s, documents, depth, currentDepth + 1);
 		}
 
 	}
 
+	/**
+	 * 
+	 * Writes link to output file, Create file if it doesn't exist
+	 * 
+	 * @param Url
+	 *            Current URL to write
+	 * @param level
+	 *            Current level to write
+	 */
 	private static void writeToOutput(String Url, int level) {
 		FileWriter writer;
-		// Write link to output file, Create file if it doesn't exist
+
 		try {
 			String fullpath = index_location + File.separator + outputFileName;
 			String line = Url + "\t" + level + "\n";
@@ -240,7 +275,16 @@ public class IR_P02 {
 
 	}
 
+	/**
+	 * 
+	 * Retrieves a list of every link found in <em>url</em>
+	 * 
+	 * @param url URL to look for links in
+	 * @return List of every <em>&lt;a&gt;</em> element found in webpage
+	 * @throws Exception
+	 */
 	private static ArrayList<String> parseLinksFromDocument(String url) throws Exception {
+
 		ArrayList<String> result = new ArrayList<String>();
 
 		org.jsoup.nodes.Document doc;
@@ -253,14 +297,20 @@ public class IR_P02 {
 		ArrayList<Element> links = doc.select("a");
 
 		for (Element el : links) {
-			// Add absolute links to our result list
+			/**
+			 * Add absolute links to our result list
+			 */
 			String l = el.attr("abs:href");
 
-			// remove empty lines (artifact by implementation)
+			/**
+			 * remove empty lines (artifact by implementation)
+			 */
 			if (l == "")
 				continue;
 
-			// Check for anchor and remove it
+			/**
+			 * Check for anchor and remove it
+			 */
 			if (l.contains("#")) {
 				l = l.substring(0, l.indexOf("#"));
 			}
@@ -270,7 +320,9 @@ public class IR_P02 {
 			 * ToDo
 			 */
 
-			// Check, if it is in our list already and add it otherwise
+			/**
+			 * Check, if it is in our list already and add it otherwise
+			 */
 			if (!result.contains(l))
 				result.add(l);
 		}
